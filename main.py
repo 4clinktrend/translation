@@ -1,19 +1,37 @@
 from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
 
-@app.route('/extract_text', methods=['POST'])
+@app.route("/extract_text", methods=["POST"])
 def extract_text():
-    # Force parsing of the body as JSON regardless of Content-Type
-    data = request.get_json(force=True)
+    try:
+        # Parse JSON body
+        data = request.get_json(force=True)  # forces parsing even if no Content-Type header
 
-    if not data or 'file_url' not in data:
-        return jsonify({"error": "Missing or invalid 'file_url'"}), 400
+        # Validate input
+        file_url = data.get("file_url")
+        if not file_url:
+            return jsonify({"error": "Missing 'file_url' in request body"}), 400
 
-    file_url = data['file_url']
+        # Download PDF
+        response = requests.get(file_url)
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to download file"}), 400
 
-    # Placeholder for actual PDF extraction logic
-    return jsonify({
-        "message": "File URL received successfully",
-        "file_url": file_url
-    })
+        pdf_content = response.content
+
+        # Here you would extract text from PDF
+        # Placeholder result
+        extracted_text = "Simulated extracted text from PDF"
+
+        return jsonify({"text": extracted_text})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
