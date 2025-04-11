@@ -10,7 +10,7 @@ app = Flask(__name__)
 @app.route("/extract_text", methods=["POST"])
 def extract_text():
     try:
-        # Ensure JSON is parsed correctly even if n8n sends it as raw string
+        # Handle both proper JSON and raw-encoded JSON string from n8n
         try:
             data = request.get_json(force=True)
         except:
@@ -20,12 +20,12 @@ def extract_text():
         if not file_url:
             return jsonify({"error": "Missing 'file_url'"}), 400
 
-        # Download the PDF file
+        # Download the PDF
         response = requests.get(file_url)
         if response.status_code != 200:
             return jsonify({"error": "Failed to download PDF"}), 400
 
-        # Save to temporary file
+        # Save to temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(response.content)
             tmp_path = tmp.name
