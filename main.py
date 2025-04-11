@@ -1,46 +1,27 @@
 from flask import Flask, request, jsonify
-import requests
-import json
-import tempfile
-import os
 from PyPDF2 import PdfReader
+import requests
+import io
 
 app = Flask(__name__)
 
-@app.route("/extract_text", methods=["POST"])
+@app.route('/extract_text', methods=['POST'])
 def extract_text():
+    data = request.get_json()
+    file_url = data.get('file_url')
+    if not file_url:
+        return jsonify({"error": "Missing file_url"}), 400
+
     try:
-        # Handle both proper JSON and raw-encoded JSON string from n8n
-        try:
-            data = request.get_json(force=True)
-        except:
-            data = json.loads(request.get_data())
-
-        file_url = data.get("file_url")
-        if not file_url:
-            return jsonify({"error": "Missing 'file_url'"}), 400
-
-        # Download the PDF
         response = requests.get(file_url)
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to download PDF"}), 400
-
-        # Save to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(response.content)
-            tmp_path = tmp.name
-
-        # Extract text
-        reader = PdfReader(tmp_path)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() or ""
-
-        os.remove(tmp_path)
-        return jsonify({"text": text.strip()})
-
+        response.raise_for_status()
+        reader = PdfReader(io.BytesIO(response.content))
+        text = "\n".join(page.extract_text() or '' for page in reader.pages)
+        return jsonify({"text": text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run()
+# ✅ Bind to all interfaces and use dynamic Render port
+import os
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0", port=port)
